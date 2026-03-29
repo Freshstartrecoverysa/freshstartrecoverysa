@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campaign | FreshStart Recovery SA</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="campaign-page-body">
+  <div class="campaign-page-shell">
+    <div id="campaign">Loading campaign...</div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const slug = urlParams.get("slug");
+
+    async function loadCampaign() {
+     
+
+      try {
+        if (!slug) {
+          document.getElementById("campaign").innerHTML = `
+            <div class="campaign-page-card">
+              <div class="campaign-page-content">
+                <h2>No campaign selected</h2>
+                <p>This page needs a valid campaign link.</p>
+                <div class="button-row page-buttons">
+                  <a href="/index.html" class="btn btn-blue">Back Home</a>
+                </div>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        const response = await fetch(`/.netlify/functions/get-campaigns`);
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Airtable error ${response.status}: ${text}`);
+        }
+
+        const data = await response.json();
+
+        const record = data.records.find(r =>
+          r.fields &&
+          r.fields.Slug &&
+          String(r.fields.Slug).trim().toLowerCase() === String(slug).trim().toLowerCase() &&
+          r.fields.Published
+        );
+
+        if (!record) {
+          document.getElementById("campaign").innerHTML = `
+            <div class="campaign-page-card">
+              <div class="campaign-page-content">
+                <h2>Campaign not found</h2>
+                <p>Check that the campaign is published and the slug is correct.</p>
+                <div class="button-row page-buttons">
+                  <a href="/index.html" class="btn btn-blue">Back Home</a>
+                </div>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        const c = record.fields;
+        const image = c.Image && c.Image.length ? c.Image[0].url : "hero-card.svg";
+        const raised = Number(c["Amount Raised"] || 0);
+        const goal = Number(c.Goal || 0);
+        const progress = goal > 0 ? Math.min((raised / goal) * 100, 100) : 0;
+        const whatsappText =
+          c["WhatsApp Message"] ||
+          `Hi FreshStart Recovery SA, I’m interested in supporting the ${c.Name || "campaign"}. Please share the next steps.`;
+
+        document.getElementById("campaign").innerHTML = `
+  <img src="${image}" alt="${c.Name || "Campaign"}"
+       style="width:100%; height:300px; object-fit:cover; border-radius:12px 12px 0 0;">
+
+  <div style="padding:25px;">
+    <div style="font-size:14px; color:#666; margin-bottom:8px;">
+      ${c.Location || ""}
+    </div>
+
+    <h1 style="margin:0 0 10px; font-size:32px; color:#222;">
+      ${c.Name || "Campaign"}
+    </h1>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+      ${c.Urgent ? `<span style="background:#fee2e2; color:#b91c1c; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700;">Urgent</span>` : ""}
+      ${c.Category ? `<span style="background:#eef2ff; color:#4338ca; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700;">${c.Category}</span>` : ""}
+      ${c.Status ? `<span style="background:#ecfdf5; color:#047857; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700;">${c.Status}</span>` : ""}
+    </div>
+
+    <p style="line-height:1.7; color:#444; font-size:16px; margin:0 0 20px;">
+      ${c["Full Story"] || c.Story || ""}
+    </p>
+
+    <div style="margin-top:20px;">
+      <div style="background:#eee; height:10px; border-radius:999px; overflow:hidden;">
+        <div style="width:${progress}%; background:#22c55e; height:100%;"></div>
+      </div>
+
+      <div style="margin-top:10px; font-size:14px; color:#444;">
+        R${raised.toLocaleString()} raised of R${goal.toLocaleString()}
+      </div>
+    </div>
+
+    <div style="margin-top:25px; display:flex; gap:12px; flex-wrap:wrap;">
+     <a href="${c["Donation Link"] || "https://paypal.me/freshstartrecoverysa"}"
+   target="_blank"
+   style="padding:12px 20px; background:#2563eb; color:#fff; border-radius:8px; text-decoration:none; font-weight:700;">
+  Donate Now
+</a>
+      <a href="https://wa.me/27795441325?text=${encodeURIComponent(whatsappText)}"
+         target="_blank"
+         style="padding:12px 20px; background:#111827; color:#fff; border-radius:8px; text-decoration:none; font-weight:700;">
+        WhatsApp Us
+      </a>
+
+      <a href="/index.html"
+         style="padding:12px 20px; background:#e5e7eb; color:#111827; border-radius:8px; text-decoration:none; font-weight:700;">
+        Back Home
+      </a>
+    </div>
+
+  </div>
+`;
+      } catch (error) {
+        console.error(error);
+  
+  document.getElementById("campaign").innerHTML = `
+    <div style="max-width:700px;margin:60px auto;text-align:center;">
+      <h2 style="color:#dc2626;">Something went wrong</h2>
+      <p>Please check your Airtable connection or try again later.</p>
+      <a href="/index.html"
+         style="display:inline-block;margin-top:20px;padding:12px 20px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;">
+         Back Home
+      </a>
+    </div>
+  `;
+     }      
+   }
+
+    loadCampaign();
+  </script>
+</body>
+</html>
